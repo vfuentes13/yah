@@ -37,11 +37,13 @@ function getLastsp500
 	if(!(Test-Path .\sptickers.txt))
 	{
 		new-item .\sptickers.txt
+		return -1
 	} else
 	{
 		$sp500tickers = get-content .\sptickers.txt
+		return $sp500tickers
 	}
-	return $sp500tickers
+	
 }
 
 # compares the previous version of the sp500 ticker list with the current one
@@ -66,10 +68,14 @@ function compareSp500($previous, $current)
 			}
 			$i+=1
 		}
+		$res.in_=$in
+		$res.out_=$out
+		return $res
+	} 
+	else {
+		return -1
 	}
-	$res.in_=$in
-	$res.out_=$out
-	return $res
+
 }
 
 # updates flat file with all the current sp500 tickers
@@ -78,33 +84,23 @@ function updateList($switchList)
 	$max = ($switchList['in_'].length,$switchList['out_'].length | Measure -Max).Maximum
 	for($i -eq 0 ; $i -le $max ; $i++){
 		get-content .\sptickers.txt | select-string -pattern $switchList['out_'][$i] -notmatch | Out-File .\sptickers.txt
-		Add-Content .\sptickers.txt $switchList['in_'][$i]
-
+		add-content .\sptickers.txt $switchList['in_'][$i]
 	}
 }
 
 
 ############################################# MAIN #############################################
 
-$curr = getCurrentsp500
-
-if(!(Test-Path .\sptickers.txt))
-{
-	new-item .\sptickers.txt
-	$curr > .\sptickers.txt
-}
-
 $prev = getLastsp500
-$switch = comparesp500 $prev $curr
-
-updateList $switchList
-
-
-
-
-
-
-
-
-
-
+$curr = getCurrentsp500
+if($prev -eq -1)
+{
+	$curr > .\sptickers.txt
+} else
+{
+	$switch = comparesp500 $prev $curr
+	if($switch -ne -1)
+	{
+		updateList $switch
+	}
+}
