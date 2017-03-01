@@ -66,6 +66,38 @@ def initialNaiveSeed(universe):
 	conn.commit()	
 	return 0
 
+
+def indexSeed(startDate, endDate):
+	sp500index=Share('^GSPC')
+	query='insert into pricing values (%s,%s,%s,%s,%s,%s,%s,%s);'
+	try:			
+		print('%s -- downloading from yahoo finance ' % (time.strftime('%Y-%m-%d %H:%M:%S')))
+		tmp=sp500index.get_historical(startDate, endDate)
+		try:
+			print('%s -- inserting in the database ' % (time.strftime('%Y-%m-%d %H:%M:%S')))				
+			for line in tmp:				
+				tmp_list=dictToListValue(line)
+				cur.execute(query, tmp_list)
+		except Exception as dbe:
+			print('%s -- error inserting in the database: %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), dbe))
+			conn.rollback()
+	except Exception as yhe:			
+		print('%s -- error downloading from yahoo finance: %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), yhe))
+	conn.commit()
+	return 0
+
+def seedUniverse(sp500tickers):
+	query='insert into universe values (%s, %s);'
+	for stock in sp500tickers:
+		tmp=[stock, Share(stock).get_name()]		
+		try:
+			cur.execute(query, tmp)
+			conn.commit()
+		except Exception as dbe:
+			print('%s -- error inserting in the database: %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), dbe))
+			conn.rollback()
+	return 0
+	
 ### main ###
 
 # get sp500 tickers list
@@ -76,8 +108,11 @@ universe=getShares(sp500tickers[1:])
 conn = sql.connect("dbname='yah' user='usr' password='pwd'")
 cur = conn.cursor()
 
-# run the initial seed
+# run the initial seed for stocks
 initialNaiveSeed(universe)
+
+# run the initial seed for SP500 benchmark
+indexSeed('2000-01-01', '2017-02-24')
 
 # close the connection
 cur.close()
